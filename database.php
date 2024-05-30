@@ -1,15 +1,22 @@
 <?php
 class Database {
-    private $host = 'localhost'; // Veritabanı sunucusu
-    private $dbName = 'veritabani_adi'; // Veritabanı adı
-    private $username = 'kullanici_adi'; // Veritabanı kullanıcı adı
-    private $password = 'sifre'; // Veritabanı şifresi
-    private $charset = 'utf8mb4'; // Karakter seti
+    private $host;
+    private $dbName;
+    private $username;
+    private $password;
+    private $charset;
     private $pdo;
     private $error;
     private $stmt;
 
     public function __construct() {
+        $config = require 'config.php';
+        $this->host = $config['host'];
+        $this->dbName = $config['dbname'];
+        $this->username = $config['username'];
+        $this->password = $config['password'];
+        $this->charset = $config['charset'];
+
         $dsn = "mysql:host={$this->host};dbname={$this->dbName};charset={$this->charset}";
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -70,6 +77,23 @@ class Database {
     // Etkilenen satır sayısını alma
     public function rowCount() {
         return $this->stmt->rowCount();
+    }
+
+    // Tüm kayıtların sayısını alma (sayfalama için)
+    public function rowCountTotal($table, $conditions = []) {
+        $sql = "SELECT COUNT(*) as total FROM {$table}";
+        if (!empty($conditions)) {
+            $sql .= " WHERE " . implode(" AND ", array_map(function ($key) {
+                return "{$key} = :{$key}";
+            }, array_keys($conditions)));
+        }
+        $this->query($sql);
+        foreach ($conditions as $key => $value) {
+            $this->bind(":{$key}", $value);
+        }
+        $this->execute();
+        $result = $this->stmt->fetch();
+        return $result['total'];
     }
 
     // Son eklenen ID'yi alma
@@ -150,5 +174,39 @@ class Database {
             $this->bind(":{$key}", $value);
         }
         return $this->execute();
+    }
+
+    // SQL enjeksiyonlarını önlemek için verileri temizleme
+    public function sanitize($data) {
+        return htmlspecialchars(strip_tags($data));
+    }
+
+    // Parola şifreleme
+    public function hashPassword($password) {
+        return password_hash($password, PASSWORD_BCRYPT);
+    }
+
+    // Parola doğrulama
+    public function verifyPassword($password, $hashedPassword) {
+        return password_verify($password, $hashedPassword);
+    }
+
+    // Sayfalama
+    public function paginate($table, $page, $perPage, $conditions = [], $fields = "*") {
+        $offset = ($page - 1) * $perPage;
+        $sql = "SELECT {$fields} FROM {$table}";
+        if (!empty($conditions)) {
+            $sql .= " WHERE " . implode(" AND ", array_map(function ($key) {
+                return "{$key} = :{$key}";
+            }, array_keys($conditions)));
+        }
+        $sql .= " LIMIT :limit OFFSET :offset";
+        $this->query($sql);
+        foreach ($conditions as $key => $value) {
+            $this->bind(":{$key}", $value);
+        }
+        $this->bind(':limit', $perPage, PDO::PARAM_INT);
+        $this->bind(':offset', $offset, PDO::PARAM_INT);
+        return $this->resultSet();
     }
 }
