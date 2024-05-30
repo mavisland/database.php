@@ -10,7 +10,6 @@ class Database {
     private $stmt;
 
     public function __construct() {
-        // PDO DSN (Data Source Name) oluşturma
         $dsn = "mysql:host={$this->host};dbname={$this->dbName};charset={$this->charset}";
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -19,7 +18,6 @@ class Database {
         ];
 
         try {
-            // PDO instance oluşturma
             $this->pdo = new PDO($dsn, $this->username, $this->password, $options);
         } catch (PDOException $e) {
             $this->error = $e->getMessage();
@@ -92,5 +90,65 @@ class Database {
     // İşlemi onaylama
     public function commit() {
         return $this->pdo->commit();
+    }
+
+    // CREATE (Veri ekleme)
+    public function create($table, $data) {
+        $keys = array_keys($data);
+        $fields = implode(", ", $keys);
+        $placeholders = ":" . implode(", :", $keys);
+        $sql = "INSERT INTO {$table} ({$fields}) VALUES ({$placeholders})";
+        $this->query($sql);
+        foreach ($data as $key => $value) {
+            $this->bind(":{$key}", $value);
+        }
+        return $this->execute();
+    }
+
+    // READ (Veri okuma)
+    public function read($table, $conditions = [], $fields = "*") {
+        $sql = "SELECT {$fields} FROM {$table}";
+        if (!empty($conditions)) {
+            $sql .= " WHERE " . implode(" AND ", array_map(function ($key) {
+                return "{$key} = :{$key}";
+            }, array_keys($conditions)));
+        }
+        $this->query($sql);
+        foreach ($conditions as $key => $value) {
+            $this->bind(":{$key}", $value);
+        }
+        return $this->resultSet();
+    }
+
+    // UPDATE (Veri güncelleme)
+    public function update($table, $data, $conditions) {
+        $fields = implode(", ", array_map(function ($key) {
+            return "{$key} = :{$key}";
+        }, array_keys($data)));
+        $conditionFields = implode(" AND ", array_map(function ($key) {
+            return "{$key} = :condition_{$key}";
+        }, array_keys($conditions)));
+        $sql = "UPDATE {$table} SET {$fields} WHERE {$conditionFields}";
+        $this->query($sql);
+        foreach ($data as $key => $value) {
+            $this->bind(":{$key}", $value);
+        }
+        foreach ($conditions as $key => $value) {
+            $this->bind(":condition_{$key}", $value);
+        }
+        return $this->execute();
+    }
+
+    // DELETE (Veri silme)
+    public function delete($table, $conditions) {
+        $conditionFields = implode(" AND ", array_map(function ($key) {
+            return "{$key} = :{$key}";
+        }, array_keys($conditions)));
+        $sql = "DELETE FROM {$table} WHERE {$conditionFields}";
+        $this->query($sql);
+        foreach ($conditions as $key => $value) {
+            $this->bind(":{$key}", $value);
+        }
+        return $this->execute();
     }
 }
