@@ -1,64 +1,40 @@
 # database.php
 
-PHP'de veritabanı işlemlerini gerçekleştirebileceğiniz ve sorgu yapabileceğiniz bir PDO sınıfı oluşturmak, veritabanı işlemlerini daha güvenli ve daha kolay yönetilebilir hale getirir. İşte basit bir PDO sınıfı örneği:
+PHP ile veritabanı işlemlerini kolaylaştırmak için oluşturulmuş bir PDO sınıfı. Bu sınıf, veritabanı bağlantılarını yönetir ve CRUD (Create, Read, Update, Delete) işlemlerini basit hale getirir. Ayrıca, güvenlik önlemleri ve sayfalama (pagination) işlemleri de içerir.
 
-Bu sınıfı kullanarak veritabanı işlemlerini daha basit ve güvenli bir şekilde gerçekleştirebilirsiniz. İşte birkaç kullanım örneği:
+## Kurulum
 
-## Kullanım Örnekleri
+1. `Database.php` dosyasını projenize ekleyin.
+2. Veritabanı bağlantı bilgilerinizi içeren bir `config.php` dosyası oluşturun.
 
-1. **Veritabanına Bağlanma ve Veri Ekleme**
-
+`config.php` içeriği:
 ```php
 <?php
+return [
+    'host' => 'localhost',
+    'dbname' => 'your_database_name',
+    'username' => 'your_username',
+    'password' => 'your_password',
+    'charset' => 'utf8'
+];
+```
+
+## Kullanım
+
+### Veritabanı Bağlantısı Alma
+
+```php
 require_once 'Database.php';
 
-$db = new Database();
-
-$db->query("INSERT INTO users (name, email) VALUES (:name, :email)");
-$db->bind(':name', 'John Doe');
-$db->bind(':email', 'john@example.com');
-$db->execute();
+// Veritabanı bağlantısı alma
+$db = Database::getInstance();
 ```
 
-2. **Veri Seçme**
+### Fonksiyonlar ve Kullanım Örnekleri
+
+#### Veri Ekleme (CREATE)
 
 ```php
-$db = new Database();
-$db->query("SELECT * FROM users WHERE email = :email");
-$db->bind(':email', 'john@example.com');
-$user = $db->single();
-
-print_r($user);
-```
-
-3. **Veri Güncelleme**
-
-```php
-$db->query("UPDATE users SET name = :name WHERE email = :email");
-$db->bind(':name', 'Jane Doe');
-$db->bind(':email', 'john@example.com');
-$db->execute();
-```
-
-4. **Veri Silme**
-
-```php
-$db = new Database();
-$db->query("DELETE FROM users WHERE email = :email");
-$db->bind(':email', 'john@example.com');
-$db->execute();
-```
-
-Bu örnekler PDO sınıfının temel kullanımını göstermektedir. Daha karmaşık işlemler için sınıfı genişletebilirsiniz.
-
-## CRUD Kullanım Örnekleri
-
-CRUD (Create, Read, Update, Delete) işlemleri için fonksiyonlar ekleyerek PDO sınıfını genişletebiliriz. Bu fonksiyonlar, veritabanı işlemlerini daha modüler ve okunabilir hale getirecektir.
-
-### Veri Ekleme (CREATE) ve Parola Şifreleme
-
-```php
-$db = new Database();
 $data = [
     'name' => $db->sanitize('John Doe'),
     'email' => $db->sanitize('john@example.com'),
@@ -67,36 +43,32 @@ $data = [
 $db->create('users', $data);
 ```
 
-### Veri Okuma (READ)
+#### Veri Okuma (READ)
 
 ```php
-$db = new Database();
 $conditions = ['email' => $db->sanitize('john@example.com')];
 $user = $db->read('users', $conditions);
 print_r($user);
 ```
 
-### Veri Güncelleme (UPDATE)
+#### Veri Güncelleme (UPDATE)
 
 ```php
-$db = new Database();
 $data = ['name' => $db->sanitize('Jane Doe')];
 $conditions = ['email' => $db->sanitize('john@example.com')];
 $db->update('users', $data, $conditions);
 ```
 
-### Veri Silme (DELETE)
+#### Veri Silme (DELETE)
 
 ```php
-$db = new Database();
 $conditions = ['email' => $db->sanitize('john@example.com')];
 $db->delete('users', $conditions);
 ```
 
-### Parola Doğrulama
+#### Parola Doğrulama
 
 ```php
-$db = new Database();
 $conditions = ['email' => $db->sanitize('john@example.com')];
 $user = $db->read('users', $conditions);
 
@@ -107,12 +79,9 @@ if ($db->verifyPassword('password123', $user[0]['password'])) {
 }
 ```
 
-### Sayfalama (Paginate)
-
-Bu yapıyla, sayfalama işlemlerini kolayca gerçekleştirebilirsiniz. `paginate` fonksiyonu, belirli bir sayfa numarası ve sayfa başına kayıt sayısına göre veri çekmenizi sağlar. `rowCountTotal` fonksiyonu ise, toplam kayıt sayısını hesaplamanızı sağlar. Bu fonksiyonları kullanarak, sayfalama işlemlerini rahatlıkla yönetebilirsiniz.
+#### Sayfalama (Paginate)
 
 ```php
-$db = new Database();
 $page = 1; // Şu anki sayfa
 $perPage = 10; // Sayfa başına kayıt sayısı
 $users = $db->paginate('users', $page, $perPage);
@@ -122,3 +91,91 @@ print_r($users);
 $totalRecords = $db->rowCountTotal('users');
 echo "Toplam kayıt sayısı: " . $totalRecords;
 ```
+
+## Fonksiyonlar
+
+### `getInstance()`
+
+Singleton tasarım deseni kullanarak, sınıfın tek bir örneğini döner.
+
+### `query($sql)`
+
+Bir SQL sorgusu hazırlar.
+
+### `bind($param, $value, $type = null)`
+
+Bir değeri belirtilen parametreye bağlar. Veri tipini otomatik olarak belirler.
+
+### `execute()`
+
+Hazırlanan sorguyu çalıştırır.
+
+### `resultSet()`
+
+Çalıştırılan sorgunun tüm sonuçlarını döner.
+
+### `single()`
+
+Çalıştırılan sorgunun tek bir sonucunu döner.
+
+### `rowCount()`
+
+Çalıştırılan sorgudan etkilenen satır sayısını döner.
+
+### `rowCountTotal($table, $conditions = [])`
+
+Belirtilen tablo ve koşullara göre toplam kayıt sayısını döner.
+
+### `lastInsertId()`
+
+Son eklenen kaydın ID'sini döner.
+
+### `beginTransaction()`
+
+Bir veritabanı işlemini başlatır.
+
+### `rollBack()`
+
+Başlatılan veritabanı işlemini geri alır.
+
+### `commit()`
+
+Başlatılan veritabanı işlemini onaylar.
+
+### `create($table, $data)`
+
+Belirtilen tabloya yeni bir kayıt ekler.
+
+### `read($table, $conditions = [], $fields = "*")`
+
+Belirtilen tablo ve koşullara göre kayıtları okur.
+
+### `update($table, $data, $conditions)`
+
+Belirtilen tablo ve koşullara göre kayıtları günceller.
+
+### `delete($table, $conditions)`
+
+Belirtilen tablo ve koşullara göre kayıtları siler.
+
+### `sanitize($data)`
+
+Veriyi SQL enjeksiyonlarından ve diğer güvenlik tehditlerinden korumak için temizler.
+
+### `hashPassword($password)`
+
+Parolayı şifreler (hash).
+
+### `verifyPassword($password, $hashedPassword)`
+
+Parolayı doğrular.
+
+### `paginate($table, $page, $perPage, $conditions = [], $fields = "*")`
+
+Belirtilen tablo ve koşullara göre sayfalama yaparak kayıtları döner.
+
+## Lisans
+
+Bu proje MIT lisansı ile lisanslanmıştır. Daha fazla bilgi için LICENSE dosyasına bakın.
+
+Bu `README.md` dosyası, `Database` sınıfının kurulumunu, fonksiyonlarının kısa açıklamalarını ve kullanım örneklerini içerir. Bu sayede, bu sınıfı projelerinizde rahatlıkla kullanabilirsiniz.
