@@ -5,11 +5,13 @@ class Database {
     private $username;
     private $password;
     private $charset;
-    private $pdo;
+    private static $pdo = null;
     private $error;
     private $stmt;
 
-    public function __construct() {
+    private static $instance = null;
+
+    private function __construct() {
         $config = require 'config.php';
         $this->host = $config['host'];
         $this->dbName = $config['dbname'];
@@ -25,16 +27,25 @@ class Database {
         ];
 
         try {
-            $this->pdo = new PDO($dsn, $this->username, $this->password, $options);
+            if (self::$pdo === null) {
+                self::$pdo = new PDO($dsn, $this->username, $this->password, $options);
+            }
         } catch (PDOException $e) {
             $this->error = $e->getMessage();
             echo "Bağlantı hatası: " . $this->error;
         }
     }
 
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     // Sorgu hazırlama
     public function query($sql) {
-        $this->stmt = $this->pdo->prepare($sql);
+        $this->stmt = self::$pdo->prepare($sql);
     }
 
     // Değerleri bağlama
@@ -98,22 +109,22 @@ class Database {
 
     // Son eklenen ID'yi alma
     public function lastInsertId() {
-        return $this->pdo->lastInsertId();
+        return self::$pdo->lastInsertId();
     }
 
     // İşlem başlatma
     public function beginTransaction() {
-        return $this->pdo->beginTransaction();
+        return self::$pdo->beginTransaction();
     }
 
     // İşlemi geri alma
     public function rollBack() {
-        return $this->pdo->rollBack();
+        return self::$pdo->rollBack();
     }
 
     // İşlemi onaylama
     public function commit() {
-        return $this->pdo->commit();
+        return self::$pdo->commit();
     }
 
     // CREATE (Veri ekleme)
